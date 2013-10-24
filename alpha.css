@@ -1,1 +1,78 @@
-/Users/evol/Documents/HTML/alpha.css
+body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    background: #fff;
+}
+
+h1 {
+    font-weight: 100;
+    font-size: 4em;
+    text-align: center;
+}
+
+.centered {
+    text-align: center;
+}
+
+.color {
+    display: inline-block;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    background: #fff;
+    font: 300 32px/1 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    width: 5em;
+    height: 40px;
+    text-align: center;
+    color: #000;
+}
+
+.dark.color {
+    color: #fff;
+}
+
+.separator {
+    display: inline-block;
+    font-size: 32px;
+    height: 32px;
+    line-height: 40px;
+}
+
+.color:focus {
+    border-color: #999;
+    outline: none;
+}
+
+.row {
+    margin-bottom: 2em;
+}
+
+button {
+    background: #aad;
+    color: #fff;
+    font: 300 24px/1 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    border: 0;
+    border-radius: 3px;
+    padding: 10px 80px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #bbe;
+}
+
+button:active {
+    position: relative;
+    top: 1px;
+}
+
+#Alpha {
+    font-weight: 100;
+    font-size: 150px;
+    letter-spacing: -0.03em;
+}
+
+#Alpha.error {
+    color: #c30;
+    font-size: 120px;
+}
