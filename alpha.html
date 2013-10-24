@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Alpha Extractor</title>
+    <link rel="stylesheet" type="text/css" href="alpha.css">
+</head>
+<body>
+    <h1>Alpha Extractor</h1>
+
+    <div class="centered">
+        <div class="row">
+            <input type="text" id="First" class="color" autocomplete="off">
+            <span class="separator">+</span>
+            <input type="text" id="Second" class="color" autocomplete="off">
+            <span class="separator">=</span>
+            <input type="text" id="Result" class="color" autocomplete="off">
+        </div>
+        <div class="row">
+            <button id="Action">Calculate!</button>
+        </div>
+
+        <div class="row">
+            <span id="Alpha"></span>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script type="text/javascript" src="one-color.js"></script>
+    <script type="text/javascript" src="alpha.js"></script>
+</body>
+</html>
