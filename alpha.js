@@ -20,7 +20,7 @@
   $('#Action').click(function() {
     var average, blue, diffgb, diffrb, diffrg, epsilon, first, green, nonzero, percent, red, result, second;
 
-    epsilon = 0.02;
+    epsilon = 0.2;
     first = $.color($('#First').val());
     second = $.color($('#Second').val());
     result = $.color($('#Result').val());
