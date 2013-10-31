@@ -203,7 +203,7 @@
         return grid.add(x, y);
       case 'finish':
         rendering = false;
-        return document.getElementsByTagName('h1')[0].innerText = 'Done!';
+        return document.getElementsByTagName('h1')[0].innerHTML = 'Done!';
     }
   });
 
