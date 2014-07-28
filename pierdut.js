@@ -466,6 +466,8 @@
   refreshingOperation = function(fn) {
     reactor.reset();
     positionGrid.clear();
+    velocityGrid.clear();
+    accelerationGrid.clear();
     fn();
     if (renderingEnabled && !running) {
       return renderer.render(pixelMapper);

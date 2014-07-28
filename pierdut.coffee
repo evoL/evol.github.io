@@ -297,6 +297,8 @@ $('Save').onclick = ->
 refreshingOperation = (fn) ->
   reactor.reset()
   positionGrid.clear()
+  velocityGrid.clear()
+  accelerationGrid.clear()
   fn()
   renderer.render(pixelMapper) if renderingEnabled && !running
 
