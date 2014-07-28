@@ -37,11 +37,11 @@ input.vertical {
 
 .container {
     margin: 50px auto;
-    width: 880px;
+    width: 930px;
 }
 
 .canvas-container { width: 600px; }
-.control-container { width: 200px; }
+.control-container { width: 250px; }
 
 .controls {
     margin: 10px 0;

@@ -31,11 +31,11 @@ class Grid
 
   forEach: (fn) ->
     for i in [0...@size.area]
-      fn(grid[i], i, grid)
+      fn(@view[i], i, @view)
 
     return @
 
-  index: (x, y) -> ~~y * @size.width + ~~x
+  index: (x, y) -> (y|0) * @size.width + (x|0)
   
   setIndex: (index, value) ->
     @view[index] = value
@@ -102,6 +102,11 @@ PixelMapper =
       r: 0
       g: value
       b: 0
+  RGB: (r, g, b) ->
+    return (index) ->
+      r: r(index) * 255
+      g: g(index) * 255
+      b: b(index) * 255
   Inverse: (pixelMapper) ->
     return (index) ->
       result = pixelMapper(index)
@@ -157,6 +162,7 @@ class Reactor
     @bounds = options.bounds || new Bounds(-2, 2, -2, 2)
     @count = options.count || 10000
     @ttl = options.ttl || 20
+    @cache = null
 
     @onparticlemove = (particle, reactor) ->
 
@@ -164,21 +170,46 @@ class Reactor
 
   reset: ->
     @system = for i in [0...@count]
-      x: Math.random() * @bounds.width + @bounds.left
-      y: Math.random() * @bounds.height + @bounds.top
-      ttl: ~~(Math.random() * @ttl)
+      position: 
+        x: Math.random() * @bounds.width + @bounds.left
+        y: Math.random() * @bounds.height + @bounds.top
+      velocity:
+        x: 0
+        y: 0
+      acceleration:
+        x: 0
+        y: 0
+      ttl: (Math.random() * @ttl) | 0
 
   step: ->
     for particle, i in @system
-      if !@bounds.contain(particle.x, particle.y) || particle.ttl == 0
+      if !@bounds.contain(particle.position.x, particle.position.y) || particle.ttl == 0
         result = {
-          x: Math.random() * @bounds.width + @bounds.left
-          y: Math.random() * @bounds.height + @bounds.top
+          position: 
+            x: Math.random() * @bounds.width + @bounds.left
+            y: Math.random() * @bounds.height + @bounds.top
+          velocity:
+            x: 0
+            y: 0
+          acceleration:
+            x: 0
+            y: 0
           ttl: @ttl
         }
       else
-        result = @attractor(particle.x, particle.y)
-        result.ttl = particle.ttl - 1
+        position = @attractor(particle.position.x, particle.position.y)
+        velocity = {
+          x: position.x - particle.position.x
+          y: position.y - particle.position.y
+        }
+        result = {
+          position: position
+          velocity: velocity
+          acceleration:
+            x: velocity.x - particle.velocity.x
+            y: velocity.y - particle.velocity.y
+          ttl: particle.ttl - 1
+        }
       
       @onparticlemove(result, @)
       @system[i] = result
@@ -189,30 +220,52 @@ $ = (id) -> document.getElementById(id)
 
 canvas = $('Canvas')
 ctx = canvas.getContext('2d')
-size = new Size(~~canvas.width, ~~canvas.height)
+size = new Size(canvas.width|0, canvas.height|0)
 
-grid = new Grid(size)
+positionGrid = new Grid(size)
+velocityGrid = new Grid(size)
+accelerationGrid = new Grid(size)
 renderer = new Renderer(size, ctx)
 
 params = [0,0,0,0,0,0,0,0,1].map (p) -> if p == 1 then Math.random() else Math.random() * 4 - 2
 # params = [0.07955073192715645, 1.9680727636441588, 0.11604494880884886, -0.26281140837818384, 0.7441467931494117, -0.49899573624134064, -1.586816594004631, -0.6013841619715095, 0.024278108729049563]
 attractor = Attractor(Formula.Blut, params)
 
-reactor = new Reactor(attractor, {count: 50000, ttl: 80})
-reactor.onparticlemove = (particle, reactor) ->
-  x = (particle.x - reactor.bounds.left) / reactor.bounds.width * grid.size.width
-  y = (particle.y - reactor.bounds.top) / reactor.bounds.height * grid.size.height
-  grid.addXY(~~x, ~~y)
-
-correctionCurve = StandardCurve(0.25, 0.5, 0.75)
-# gridMapper = GridMapper.Corrected(GridMapper.Logarithmic(grid), correctionCurve)
-gridMapper = GridMapper.Logarithmic(grid)
-pixelMapper = PixelMapper.Inverse(PixelMapper.Monochrome(gridMapper))
-
 zoomLevel = 2.0
+viewZoomLevel = 2.0
 centerPoint = 
   x: 0
   y: 0
+viewCenterPoint =
+  x: 0
+  y: 0
+
+viewBounds = new Bounds(-viewZoomLevel + viewCenterPoint.x, viewZoomLevel + viewCenterPoint.x, -viewZoomLevel + viewCenterPoint.y, viewZoomLevel + viewCenterPoint.y)
+
+reactor = new Reactor(attractor, {count: 50000, ttl: 80})
+reactor.onparticlemove = (particle, reactor) ->
+  pos = particle.position
+  vel = particle.velocity
+  accel = particle.acceleration
+
+  x = (pos.x - viewBounds.left) / viewBounds.width * positionGrid.size.width
+  y = (pos.y - viewBounds.top) / viewBounds.height * positionGrid.size.height
+
+  positionGrid.addXY(x|0, y|0)
+  velocityGrid.addXY(x|0, y|0, Math.sqrt(vel.x * vel.x + vel.y * vel.y))
+  accelerationGrid.addXY(x|0, y|0, Math.sqrt(accel.x * accel.x + accel.y * accel.y))
+
+correctionCurve = StandardCurve(0.25, 0.5, 0.75)
+
+gridMappers =
+  position: GridMapper.Logarithmic(positionGrid)
+  velocity: GridMapper.Logarithmic(velocityGrid)
+  acceleration: GridMapper.Logarithmic(accelerationGrid)
+
+# gridMapper = GridMapper.Corrected(GridMapper.Logarithmic(positionGrid), correctionCurve)
+# gridMapper = GridMapper.Logarithmic(positionGrid)
+# pixelMapper = PixelMapper.Inverse(PixelMapper.Monochrome(gridMapper))
+pixelMapper = PixelMapper.Inverse(PixelMapper.RGB(gridMappers.position, gridMappers.velocity, gridMappers.acceleration))
 
 running = true
 renderingEnabled = true
@@ -243,7 +296,7 @@ $('Save').onclick = ->
 
 refreshingOperation = (fn) ->
   reactor.reset()
-  grid.clear()
+  positionGrid.clear()
   fn()
   renderer.render(pixelMapper) if renderingEnabled && !running
 
@@ -257,7 +310,11 @@ showState = ->
       c: $('CorrectionC').value * 0.01
 
 updateMapper = ->
-  gridMapper = GridMapper[$('Grid').value](grid)
+  gridMapper = GridMapper[$('Grid').value]
+
+  gridMappers.position = gridMapper(positionGrid)
+  gridMappers.velocity = gridMapper(velocityGrid)
+  gridMappers.acceleration = gridMapper(accelerationGrid)
 
   if $('Correction').checked
     a = $('CorrectionA').value * 0.01
@@ -265,9 +322,11 @@ updateMapper = ->
     c = $('CorrectionC').value * 0.01
     correctionCurve = StandardCurve(a, b, c)
 
-    gridMapper = GridMapper.Corrected(gridMapper, correctionCurve)
+    gridMappers.position = GridMapper.Corrected(gridMappers.position, correctionCurve)
+    gridMappers.velocity = GridMapper.Corrected(gridMappers.velocity, correctionCurve)
+    gridMappers.acceleration = GridMapper.Corrected(gridMappers.acceleration, correctionCurve)
 
-  pixelMapper = PixelMapper[$('Mapper').value](gridMapper)
+  pixelMapper = PixelMapper[$('Mapper').value](gridMappers.position, gridMappers.velocity, gridMappers.acceleration)
 
   if $('Inverted').checked
     pixelMapper = PixelMapper.Inverse(pixelMapper)
@@ -277,13 +336,32 @@ updateMapper = ->
   showState()
 
 updateBounds = ->
-  zoomLevel = Math.pow(2, 5 - $('Zoom').valueAsNumber * 0.5)
-  centerPoint = 
-    x: $('CenterX').valueAsNumber
-    y: $('CenterY').valueAsNumber
+  viewZoomLevel = Math.pow(2, 5 - $('ViewZoom').valueAsNumber * 0.5)
+  viewCenterPoint = 
+    x: $('ViewX').valueAsNumber
+    y: $('ViewY').valueAsNumber
 
+  if $('SyncBounds').checked
+    zoomLevel = viewZoomLevel
+    centerPoint = viewCenterPoint
+  else
+    zoomLevel = Math.pow(2, 5 - $('Zoom').valueAsNumber * 0.5)  
+    centerPoint = 
+      x: $('CenterX').valueAsNumber
+      y: $('CenterY').valueAsNumber
+  
   refreshingOperation ->
     reactor.bounds = new Bounds(-zoomLevel + centerPoint.x, zoomLevel + centerPoint.x, -zoomLevel + centerPoint.y, zoomLevel + centerPoint.y)
+    viewBounds = new Bounds(-viewZoomLevel + viewCenterPoint.x, viewZoomLevel + viewCenterPoint.x, -viewZoomLevel + viewCenterPoint.y, viewZoomLevel + viewCenterPoint.y)
+
+updateBoundsSync = ->
+  sync = $('SyncBounds').checked
+
+  $('Zoom').disabled = sync
+  $('CenterX').disabled = sync
+  $('CenterY').disabled = sync
+
+  updateBounds()
 
 $('Rendering').onchange = ->
   renderingEnabled = $('Rendering').checked
@@ -300,5 +378,9 @@ $('CorrectionC').onchange = updateMapper
 $('Zoom').onchange = updateBounds
 $('CenterX').onchange = updateBounds
 $('CenterY').onchange = updateBounds
+$('ViewZoom').onchange = updateBounds
+$('ViewX').onchange = updateBounds
+$('ViewY').onchange = updateBounds
+$('SyncBounds').onchange = updateBoundsSync
 
 showState()

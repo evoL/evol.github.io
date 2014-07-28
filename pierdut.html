@@ -24,6 +24,8 @@
                     Rendering
                 </label>
             </div>
+
+            
             <div class="controls">
                 Grid Mapper:
                 <select id="Grid">
@@ -35,8 +37,9 @@
             <div class="controls">
                 Pixel Mapper:
                 <select id="Mapper">
-                    <option value="Monochrome" selected>Black &amp; White</option>
+                    <option value="Monochrome">Black &amp; White</option>
                     <option value="Green">Black &amp; Green</option>
+                    <option value="RGB" selected>Color</option>
                 </select>
             </div>
             <div class="controls offset">
@@ -58,6 +61,26 @@
                 <input type="range" orient="vertical" class="vertical" id="CorrectionC" min="0" max="100" value="75">
             </div>
 
+            <strong>View bounds</strong>
+
+            <div class="controls">
+                Zoom level:
+                <input type="number" min="0" max="15" value="8" id="ViewZoom">
+            </div>
+            <div class="controls offset">
+                Center:
+                <input type="number" min="-16" max="16" value="0" step="0.1" id="ViewX">
+                <input type="number" min="-16" max="16" value="0" step="0.1" id="ViewY">
+            </div>
+
+            <strong>Generation bounds</strong>
+
+            <div class="controls">
+                <label>
+                    <input type="checkbox" id="SyncBounds" />
+                    Sync with view bounds
+                </label>
+            </div>
             <div class="controls">
                 Zoom level:
                 <input type="number" min="0" max="15" value="8" id="Zoom">
