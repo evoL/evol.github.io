@@ -534,14 +534,14 @@
     },
     DeepRed: function(gridModifier) {
       var h, l, s;
-      h = GridModifier.Added(-0.1, GridModifier.Multiplied(0.2, GridMapper.Logarithmic(accelerationGrid)));
-      s = GridModifier.Inverted(GridMapper.Linear(velocityGrid));
-      l = gridModifier(GridMapper.Logarithmic(positionGrid));
+      h = GridModifier.Added(-0.125, GridModifier.Multiplied(0.2, GridMapper.Logarithmic(accelerationGrid)));
+      s = GridModifier.Multiplied(0.8, GridModifier.Inverted(GridMapper.Linear(velocityGrid)));
+      l = GridModifier.Multiplied(0.8, gridModifier(GridMapper.Logarithmic(positionGrid)));
       return PixelMapper.HSL(h, s, l);
     }
   };
 
-  pixelMapper = Presets.Classic(GridModifier.None);
+  pixelMapper = Presets.DeepRed(GridModifier.None);
 
   running = true;
 
