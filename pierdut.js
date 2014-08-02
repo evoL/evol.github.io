@@ -541,7 +541,7 @@
     }
   };
 
-  pixelMapper = Presets.DeepRed(GridModifier.None);
+  pixelMapper = Presets.Classic(GridModifier.None);
 
   running = true;
 

@@ -335,7 +335,7 @@ correctionCurve = StandardCurve(0.25, 0.5, 0.75)
 
     PixelMapper.HSL h, s, l
 
-pixelMapper = Presets.DeepRed GridModifier.None
+pixelMapper = Presets.Classic GridModifier.None
 
 running = true
 renderingEnabled = true
