@@ -19,6 +19,8 @@ class Grid
     
     @max = 0
     @logmax = 0
+    @min = 0
+    @logmin = 0
 
   clear: ->
     for i in [0...@size.area]
@@ -26,6 +28,8 @@ class Grid
 
     @max = 0
     @logmax = 0
+    @min = 0
+    @logmin = 0
 
     return @
 
@@ -43,6 +47,9 @@ class Grid
     if value > @max
       @max = value
       @logmax = Math.log(value)
+    if value < @min
+      @min = value
+      @logmin = Math.log(value)
 
     return @
 
@@ -72,22 +79,34 @@ class Renderer
     @imageData.data.set(@pixel8)
     @context.putImageData(@imageData, 0, 0)
 
-GridMapper =
+@GridMapper =
   Zero: -> 0
   One: -> 1
+  Constant: (c) ->
+    return -> c
   Binary: (grid) -> 
     return (index) -> (grid.view[index] > 0) ? 1 : 0
   Linear: (grid) ->
-    return (index) -> grid.view[index] / grid.max
+    return (index) -> (grid.view[index] - grid.min) / (grid.max - grid.min)
   Logarithmic: (grid) ->
     return (index) ->
       return 0 if grid.view[index] == 0
-      Math.log(grid.view[index]) / grid.logmax
+      (Math.log(grid.view[index]) - grid.logmin) / (grid.logmax - grid.logmin)
   Corrected: (gridMapper, curve) ->
     return (index) ->
       curve(gridMapper(index))
 
-PixelMapper =
+hue2rgb = (p, q, t) ->
+  t += 1 if t < 0
+  t -= 1 if t > 1
+
+  return p + (q - p) * 6 * t         if t < 1/6
+  return q                           if t < 0.5
+  return p + (q - p) * (2/3 - t) * 6 if t < 2/3
+
+  return p
+
+@PixelMapper =
   Monochrome: (gridMapper) ->
     return (index) ->
       value = gridMapper(index) * 255
@@ -107,6 +126,27 @@ PixelMapper =
       r: r(index) * 255
       g: g(index) * 255
       b: b(index) * 255
+  HSL: (h, s, l) ->
+    return (index) ->
+      vh = h(index)
+      vs = s(index)
+      vl = l(index)
+
+      if vs == 0
+        value = vl * 255
+        return {
+          r: value
+          g: value
+          b: value
+        }
+
+      q = if vl < 0.5 then vl * (1 + vs) else vl + vs - vl * vs
+      p = 2 * vl - q
+
+      r: hue2rgb(p, q, vh + 1/3) * 255
+      g: hue2rgb(p, q, vh) * 255
+      b: hue2rgb(p, q, vh - 1/3) * 255
+
   Inverse: (pixelMapper) ->
     return (index) ->
       result = pixelMapper(index)
@@ -183,7 +223,7 @@ class Reactor
 
   step: ->
     for particle, i in @system
-      if !@bounds.contain(particle.position.x, particle.position.y) || particle.ttl == 0
+      if !@bounds.contain(particle.position.x, particle.position.y) || particle.ttl <= 0
         result = {
           position: 
             x: Math.random() * @bounds.width + @bounds.left
@@ -194,7 +234,7 @@ class Reactor
           acceleration:
             x: 0
             y: 0
-          ttl: @ttl
+          ttl: (Math.random() * @ttl) | 0
         }
       else
         position = @attractor(particle.position.x, particle.position.y)
@@ -242,7 +282,7 @@ viewCenterPoint =
 
 viewBounds = new Bounds(-viewZoomLevel + viewCenterPoint.x, viewZoomLevel + viewCenterPoint.x, -viewZoomLevel + viewCenterPoint.y, viewZoomLevel + viewCenterPoint.y)
 
-reactor = new Reactor(attractor, {count: 50000, ttl: 80})
+reactor = new Reactor(attractor, {count: 50000})
 reactor.onparticlemove = (particle, reactor) ->
   pos = particle.position
   vel = particle.velocity
@@ -257,15 +297,45 @@ reactor.onparticlemove = (particle, reactor) ->
 
 correctionCurve = StandardCurve(0.25, 0.5, 0.75)
 
-gridMappers =
-  position: GridMapper.Logarithmic(positionGrid)
-  velocity: GridMapper.Logarithmic(velocityGrid)
-  acceleration: GridMapper.Logarithmic(accelerationGrid)
+@GridModifier =
+  None: (gridMapper) -> gridMapper
+  Corrected: (correctionCurve) ->
+    (gridMapper) -> GridMapper.Corrected(gridMapper, correctionCurve)
+  Inverted: (gridMapper) ->
+    return (index) -> 1 - gridMapper(index)
+  Multiplied: (constant, gridMapper) ->
+    return (index) -> constant * gridMapper(index)
+  Added: (constant, gridMapper) ->
+    return (index) -> constant + gridMapper(index)
 
-# gridMapper = GridMapper.Corrected(GridMapper.Logarithmic(positionGrid), correctionCurve)
-# gridMapper = GridMapper.Logarithmic(positionGrid)
-# pixelMapper = PixelMapper.Inverse(PixelMapper.Monochrome(gridMapper))
-pixelMapper = PixelMapper.Inverse(PixelMapper.RGB(gridMappers.position, gridMappers.velocity, gridMappers.acceleration))
+@Presets =
+  Binary: ->
+    PixelMapper.Monochrome GridMapper.Binary positionGrid
+  Monochrome: (gridModifier) ->
+    PixelMapper.Monochrome gridModifier GridMapper.Logarithmic positionGrid
+  PVA: (gridModifier) ->
+    modLog = (grid) -> gridModifier GridMapper.Logarithmic grid
+    PixelMapper.RGB modLog(positionGrid), modLog(velocityGrid), modLog(accelerationGrid)
+  APV: (gridModifier) ->
+    modLog = (grid) -> gridModifier GridMapper.Logarithmic grid
+    PixelMapper.RGB modLog(accelerationGrid), modLog(positionGrid), modLog(velocityGrid)
+  VA0: (gridModifier) ->
+    modLog = (grid) -> gridModifier GridMapper.Logarithmic grid
+    PixelMapper.RGB modLog(velocityGrid), modLog(accelerationGrid), GridMapper.Zero
+  Classic: (gridModifier) ->
+    h = GridModifier.Multiplied(0.15, GridMapper.Logarithmic(accelerationGrid))
+    s = GridModifier.Inverted GridMapper.Linear velocityGrid
+    l = gridModifier GridMapper.Logarithmic positionGrid
+
+    PixelMapper.HSL h, s, l
+  DeepRed: (gridModifier) ->
+    h = GridModifier.Added(-0.1, GridModifier.Multiplied(0.2, GridMapper.Logarithmic(accelerationGrid)))
+    s = GridModifier.Inverted GridMapper.Linear velocityGrid
+    l = gridModifier GridMapper.Logarithmic positionGrid
+
+    PixelMapper.HSL h, s, l
+
+pixelMapper = Presets.Classic GridModifier.None
 
 running = true
 renderingEnabled = true
@@ -295,11 +365,11 @@ $('Save').onclick = ->
   window.open(canvas.toDataURL('image/png'))
 
 refreshingOperation = (fn) ->
+  fn()
   reactor.reset()
   positionGrid.clear()
   velocityGrid.clear()
   accelerationGrid.clear()
-  fn()
   renderer.render(pixelMapper) if renderingEnabled && !running
 
 showState = ->
@@ -312,11 +382,7 @@ showState = ->
       c: $('CorrectionC').value * 0.01
 
 updateMapper = ->
-  gridMapper = GridMapper[$('Grid').value]
-
-  gridMappers.position = gridMapper(positionGrid)
-  gridMappers.velocity = gridMapper(velocityGrid)
-  gridMappers.acceleration = gridMapper(accelerationGrid)
+  preset = Presets[$('Preset').value]
 
   if $('Correction').checked
     a = $('CorrectionA').value * 0.01
@@ -324,11 +390,9 @@ updateMapper = ->
     c = $('CorrectionC').value * 0.01
     correctionCurve = StandardCurve(a, b, c)
 
-    gridMappers.position = GridMapper.Corrected(gridMappers.position, correctionCurve)
-    gridMappers.velocity = GridMapper.Corrected(gridMappers.velocity, correctionCurve)
-    gridMappers.acceleration = GridMapper.Corrected(gridMappers.acceleration, correctionCurve)
-
-  pixelMapper = PixelMapper[$('Mapper').value](gridMappers.position, gridMappers.velocity, gridMappers.acceleration)
+    pixelMapper = preset GridModifier.Corrected correctionCurve
+  else
+    pixelMapper = preset GridModifier.None
 
   if $('Inverted').checked
     pixelMapper = PixelMapper.Inverse(pixelMapper)
@@ -365,13 +429,18 @@ updateBoundsSync = ->
 
   updateBounds()
 
+updateTTL = ->
+  ttl = $('TTL').valueAsNumber
+
+  refreshingOperation ->
+    reactor.ttl = ttl
+
 $('Rendering').onchange = ->
   renderingEnabled = $('Rendering').checked
 
   renderer.render(pixelMapper) if renderingEnabled && !running
 
-$('Grid').onchange = updateMapper
-$('Mapper').onchange = updateMapper
+$('Preset').onchange = updateMapper
 $('Inverted').onchange = updateMapper
 $('Correction').onchange = updateMapper
 $('CorrectionA').onchange = updateMapper
@@ -384,5 +453,13 @@ $('ViewZoom').onchange = updateBounds
 $('ViewX').onchange = updateBounds
 $('ViewY').onchange = updateBounds
 $('SyncBounds').onchange = updateBoundsSync
+
+$('TTLSlider').onchange = ->
+  $('TTL').value = $('TTLSlider').value
+  updateTTL()
+
+$('TTL').onchange = ->
+  $('TTLSlider').value = $('TTL').value
+  updateTTL()
 
 showState()
