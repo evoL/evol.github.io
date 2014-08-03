@@ -2,6 +2,25 @@
 (function() {
   var $, Attractor, Bounds, Formula, Grid, Reactor, Renderer, Size, StandardCurve, accelerationGrid, attractor, canvas, centerPoint, correctionCurve, ctx, hue2rgb, params, pixelMapper, positionGrid, reactor, refreshingOperation, renderer, renderingEnabled, run, running, showState, size, toggle, updateBounds, updateBoundsSync, updateMapper, updateTTL, velocityGrid, viewBounds, viewCenterPoint, viewZoomLevel, zoomLevel;
 
+  hue2rgb = function(p, q, t) {
+    if (t < 0) {
+      t += 1;
+    }
+    if (t > 1) {
+      t -= 1;
+    }
+    if (t < 1 / 6) {
+      return p + (q - p) * 6 * t;
+    }
+    if (t < 0.5) {
+      return q;
+    }
+    if (t < 2 / 3) {
+      return p + (q - p) * (2 / 3 - t) * 6;
+    }
+    return p;
+  };
+
   Size = (function() {
     function Size(width, height) {
       this.width = width;
@@ -175,25 +194,6 @@
     }
   };
 
-  hue2rgb = function(p, q, t) {
-    if (t < 0) {
-      t += 1;
-    }
-    if (t > 1) {
-      t -= 1;
-    }
-    if (t < 1 / 6) {
-      return p + (q - p) * 6 * t;
-    }
-    if (t < 0.5) {
-      return q;
-    }
-    if (t < 2 / 3) {
-      return p + (q - p) * (2 / 3 - t) * 6;
-    }
-    return p;
-  };
-
   this.PixelMapper = {
     Monochrome: function(gridMapper) {
       return function(index) {
@@ -206,15 +206,9 @@
         };
       };
     },
-    Green: function(gridMapper) {
+    Gradient: function(gradient, gridMapper) {
       return function(index) {
-        var value;
-        value = gridMapper(index) * 255;
-        return {
-          r: 0,
-          g: value,
-          b: 0
-        };
+        return gradient(gridMapper(index));
       };
     },
     RGB: function(r, g, b) {
@@ -301,6 +295,73 @@
       }
       return value;
     };
+  };
+
+  this.Gradient = {
+    Cherry: function(value) {
+      var scaled;
+      if (value < 0.5) {
+        scaled = value / 0.5;
+        return {
+          r: 116 * scaled,
+          g: 4 * scaled,
+          b: 28 * scaled
+        };
+      } else if (value < 0.85) {
+        scaled = (value - 0.5) / 0.4;
+        return {
+          r: 116 + scaled * 32,
+          g: 4 + scaled * 48,
+          b: 28 + scaled * 88
+        };
+      } else {
+        scaled = (value - 0.85) / 0.15;
+        return {
+          r: 148 + scaled * 107,
+          g: 52 + scaled * 203,
+          b: 116 + scaled * 139
+        };
+      }
+    },
+    Emerald: function(value) {
+      var scaled;
+      if (value < 0.4) {
+        scaled = value / 0.4;
+        return {
+          r: 255 - scaled * 156,
+          g: 255 - scaled * 77,
+          b: 255 - scaled * 160
+        };
+      } else if (value < 0.51) {
+        scaled = (value - 0.4) / 0.11;
+        return {
+          r: 99 - scaled * 27,
+          g: 178 - scaled * 24,
+          b: 95 - scaled * 41
+        };
+      } else if (value < 0.62) {
+        scaled = (value - 0.51) / 0.11;
+        return {
+          r: 72 - scaled * 33,
+          g: 154 - scaled * 44,
+          b: 54 - scaled * 36
+        };
+      } else if (value < 0.85) {
+        scaled = (value - 0.62) / 0.23;
+        return {
+          r: 39 - scaled * 30,
+          g: 110 - scaled * 85,
+          b: 18 - scaled * 4
+        };
+      } else {
+        scaled = (value - 0.85) / 0.15;
+        return {
+          r: 9 - scaled * 9,
+          g: 25 - scaled * 25,
+          b: 14 - scaled * 14
+        };
+      }
+    }
   };
 
   Formula = {
@@ -538,6 +599,19 @@
       s = GridModifier.Multiplied(0.8, GridModifier.Inverted(GridMapper.Linear(velocityGrid)));
       l = GridModifier.Multiplied(0.8, gridModifier(GridMapper.Logarithmic(positionGrid)));
       return PixelMapper.HSL(h, s, l);
+    },
+    IceBlue: function(gridModifier) {
+      var h, l, s;
+      h = GridModifier.Added(0.6, GridModifier.Multiplied(0.15, GridMapper.Logarithmic(accelerationGrid)));
+      s = GridModifier.Multiplied(0.4, GridModifier.Inverted(GridMapper.Linear(velocityGrid)));
+      l = gridModifier(GridMapper.Logarithmic(positionGrid));
+      return PixelMapper.HSL(h, s, l);
+    },
+    Emerald: function(gridModifier) {
+      return PixelMapper.Gradient(Gradient.Emerald, gridModifier(GridMapper.Logarithmic(positionGrid)));
+    },
+    Cherry: function(gridModifier) {
+      return PixelMapper.Gradient(Gradient.Cherry, gridModifier(GridMapper.Logarithmic(positionGrid)));
     }
   };
 

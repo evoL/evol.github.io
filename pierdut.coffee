@@ -1,3 +1,13 @@
+hue2rgb = (p, q, t) ->
+  t += 1 if t < 0
+  t -= 1 if t > 1
+
+  return p + (q - p) * 6 * t         if t < 1/6
+  return q                           if t < 0.5
+  return p + (q - p) * (2/3 - t) * 6 if t < 2/3
+
+  return p
+
 class Size
   constructor: (@width, @height) ->
     @area = @width * @height
@@ -96,16 +106,6 @@ class Renderer
     return (index) ->
       curve(gridMapper(index))
 
-hue2rgb = (p, q, t) ->
-  t += 1 if t < 0
-  t -= 1 if t > 1
-
-  return p + (q - p) * 6 * t         if t < 1/6
-  return q                           if t < 0.5
-  return p + (q - p) * (2/3 - t) * 6 if t < 2/3
-
-  return p
-
 @PixelMapper =
   Monochrome: (gridMapper) ->
     return (index) ->
@@ -114,13 +114,9 @@ hue2rgb = (p, q, t) ->
       r: value
       g: value
       b: value
-  Green: (gridMapper) ->
+  Gradient: (gradient, gridMapper) ->
     return (index) ->
-      value = gridMapper(index) * 255
-
-      r: 0
-      g: value
-      b: 0
+      gradient(gridMapper(index))
   RGB: (r, g, b) ->
     return (index) ->
       r: r(index) * 255
@@ -146,7 +142,6 @@ hue2rgb = (p, q, t) ->
       r: hue2rgb(p, q, vh + 1/3) * 255
       g: hue2rgb(p, q, vh) * 255
       b: hue2rgb(p, q, vh - 1/3) * 255
-
   Inverse: (pixelMapper) ->
     return (index) ->
       result = pixelMapper(index)
@@ -186,6 +181,58 @@ StandardCurve = (a, b, c) ->
     return 0 if value < 0
     return 1 if value > 1
     value
+
+@Gradient = 
+  Cherry: (value) ->
+    if value < 0.5
+      scaled = value / 0.5
+
+      r: 116 * scaled
+      g: 4 * scaled
+      b: 28 * scaled
+    else if value < 0.85
+      scaled = (value - 0.5) / 0.4
+
+      r: 116 + scaled * 32 # 148
+      g: 4 + scaled * 48   # 52
+      b: 28 + scaled * 88  # 116
+    else
+      scaled = (value - 0.85) / 0.15
+
+      r: 148 + scaled * 107 # 255
+      g: 52 + scaled * 203  # 255
+      b: 116 + scaled * 139 # 255
+  Emerald: (value) ->
+    if value < 0.4
+      scaled = value / 0.4
+
+      r: 255 - scaled * 156 # 99
+      g: 255 - scaled * 77  # 178
+      b: 255 - scaled * 160 # 95
+    else if value < 0.51
+      scaled = (value - 0.4) / 0.11
+
+      r: 99 - scaled * 27  # 72
+      g: 178 - scaled * 24 # 154
+      b: 95 - scaled * 41  # 54
+    else if value < 0.62
+      scaled = (value - 0.51) / 0.11
+
+      r: 72 - scaled * 33  # 39
+      g: 154 - scaled * 44 # 110
+      b: 54 - scaled * 36  # 18
+    else if value < 0.85
+      scaled = (value - 0.62) / 0.23
+
+      r: 39 - scaled * 30  # 9
+      g: 110 - scaled * 85 # 25
+      b: 18 - scaled * 4   # 14
+    else
+      scaled = (value - 0.85) / 0.15
+
+      r: 9 - scaled * 9
+      g: 25 - scaled * 25
+      b: 14 - scaled * 14
 
 #########################################################################################
 
@@ -334,6 +381,22 @@ correctionCurve = StandardCurve(0.25, 0.5, 0.75)
     l = GridModifier.Multiplied(0.8, gridModifier GridMapper.Logarithmic positionGrid)
 
     PixelMapper.HSL h, s, l
+  IceBlue: (gridModifier) ->
+    h = GridModifier.Added(0.6, GridModifier.Multiplied(0.15, GridMapper.Logarithmic(accelerationGrid)))
+    s = GridModifier.Multiplied(0.4, GridModifier.Inverted GridMapper.Linear velocityGrid)
+    l = gridModifier GridMapper.Logarithmic positionGrid
+
+    PixelMapper.HSL h, s, l
+  # Emerald: (gridModifier) ->
+  #   h = GridModifier.Added(0.24, GridModifier.Multiplied(0.07, GridMapper.Logarithmic(accelerationGrid)))
+  #   s = GridModifier.Multiplied(0.6, GridModifier.Inverted GridMapper.Linear velocityGrid)
+  #   l = GridModifier.Inverted gridModifier GridMapper.Logarithmic positionGrid
+
+  #   PixelMapper.HSL h, s, l
+  Emerald: (gridModifier) ->
+    PixelMapper.Gradient(Gradient.Emerald, gridModifier GridMapper.Logarithmic positionGrid)
+  Cherry: (gridModifier) ->
+    PixelMapper.Gradient(Gradient.Cherry, gridModifier GridMapper.Logarithmic positionGrid)
 
 pixelMapper = Presets.Classic GridModifier.None
 
