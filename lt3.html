@@ -1,0 +1,184 @@
+<!doctype html>
+<html>
+<head>
+    <title> <3 </title>
+    <meta charset="utf-8">
+    <style type="text/css">
+    #C {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        margin-left: -512px;
+        margin-top: -384px;
+        /*outline: 1px solid #00f;*/
+    }
+    </style>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/mootools/1.4.5/mootools-yui-compressed.js"></script>
+</head>
+<body>
+    <canvas width="1024" height="768" id="C"> :( </canvas>
+
+    <script type="text/javascript">
+    function V(x,y) {
+        this.x = x;
+        this.y = y;
+    };
+
+    V.prototype.plus = function(v) {
+        this.x += v.x;
+        this.y += v.y;
+        return this;
+    };
+    V.prototype.minusNew = function(v) {
+        return new V (this.x-v.x, this.y-v.y);
+    };
+    V.prototype.scale = function(s) {
+        this.x *= s;
+        this.y *= s;
+        return this;
+    };
+    V.prototype.reset = function(x,y) {
+        this.x = x;
+        this.y = y;
+        return this;
+    };
+    V.prototype.getLength = function() {
+        return Math.sqrt(this.x*this.x + this.y*this.y);
+    };
+    V.prototype.setLength = function(l) {
+        var r = this.getLength();
+        if (r === 0) {
+            this.x = l;
+            return this;
+        }
+        return this.scale(l/r);
+    };
+
+    function P(x,y) {
+        return {
+            pos: new V(x,y),
+            startPos: new V(x,y),
+            vel: new V(0,0),
+            accel: new V(0,0),
+            forces: {}
+        };
+    }
+
+    ///////
+
+    //function $(x) { return document.getElementById(x); }
+
+    var el = $('C'), 
+    c = el.getContext('2d'), 
+    pi2 = Math.PI*2,
+    /*lit =
+    ' oo oo ' + 
+    'ooooooo' +
+    'ooooooo' +
+    ' ooooo ' +
+    '  ooo  ' +
+    '   o   ',
+    cols = 7,
+    rows = 6,
+    radius = 20,*/
+    lit = 
+    '  oooooo  oooooo  ' +
+    '  oooooo  oooooo  ' +
+    'oooooooooooo  oooo' +
+    'oooooooooooo  oooo' +
+    'oooooooooooooo  oo' +
+    'oooooooooooooo  oo' +
+    'oooooooooooooooooo' +
+    'oooooooooooooooooo' +
+    'oooooooooooooooooo' +
+    'oooooooooooooooooo' +
+    '  oooooooooooooo  ' +
+    '  oooooooooooooo  ' +
+    '    oooooooooo    ' +
+    '    oooooooooo    ' +
+    '      oooooo      ' +
+    '      oooooo      ' +
+    '        oo        ' +
+    '        oo        ',
+    cols = 18,
+    rows = 18,
+    radius = 12,
+
+    friction = 0.1,
+    anchor = new V(0,0),
+    tautness = 0.1;
+
+    c.fillStyle = '#D41B29';
+
+    function circ(x,y) {
+        c.beginPath();
+        c.arc(x,y,radius,0,pi2,true);
+        c.fill();
+    }
+
+    var particles = lit.split('').reduce(function(prev,chr,i) {
+        if (chr === 'o') {
+            var p = P( (i%cols) * radius * 2, ~~(i/cols) * radius * 2);
+            p.forces.gravity = function() {
+                var f = this.pos.minusNew(anchor);
+                return f.setLength(5);
+            };
+            p.forces.elastic = function() {
+                var f = this.pos.minusNew(this.startPos);
+                return f.scale(-tautness);
+            };
+
+            return prev.concat([ p ]);
+        }
+        return prev;
+    }, []);
+
+
+    function applyForces(p) {
+        var fs = p.forces;
+        for (var k in fs) {
+            if (fs.hasOwnProperty(k)) {
+                p.vel.plus( fs[k].call(p) );
+            }
+        }
+
+        p.vel.plus(p.accel);
+        p.vel.scale(1 - friction);
+
+        p.pos.plus(p.vel);
+    };
+
+    var transx = 512-(cols*radius),
+    transy = 384-(rows*radius);
+
+    requestAnimationFrame = window.requestAnimationFrame || 
+                            window.mozRequestAnimationFrame ||  
+                            window.webkitRequestAnimationFrame ||
+                            window.msRequestAnimationFrame; 
+
+    function render() {
+        c.clearRect(0,0,1024,768);
+
+        c.save();
+        c.translate(transx, transy);
+
+        particles.forEach(function(p) {
+            applyForces(p);
+            circ(p.pos.x, p.pos.y);
+        });
+
+        c.restore();
+
+        requestAnimationFrame(render);
+    }
+
+    el.addEvent('mousemove', function(e) {
+        var pos = this.getPosition();
+        anchor.reset(e.page.x - pos.x - transx, e.page.y - pos.y - transy);
+    });
+
+    //setInterval(render, 16);
+    requestAnimationFrame(render);
+    </script>
+</body>
+</html>
