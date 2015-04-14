@@ -2,13 +2,14 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Pierdut</title>
     <link rel="stylesheet" type="text/css" href="pierdut.css">
 </head>
 <body>
     <div class="container row">
         <div class="canvas-container column">
-            <canvas id="Canvas" width="600" height="600"></canvas>
+            <canvas id="Canvas" width="1024" height="1024"></canvas>
             <div class="state" id="State"></div>
         </div>
         <div class="control-container column">
@@ -18,31 +19,51 @@
                 <button id="Save">Save</button>
             </div>
 
-            <div class="controls">
+            <div class="controls offset">
                 <label>
                     <input type="checkbox" id="Rendering" checked>
                     Rendering
                 </label>
             </div>
-            
+
+            <div class="controls">
+                Formula:
+                <select id="Formula">
+                    <option value="SimpleBlended">Simple Blended</option>
+                    <option value="Blended">Blended</option>
+                    <option value="Branched" selected>Branched</option>
+                    <option value="DeJong">DeJong</option>
+                    <option value="GumowskiMira">Gumowski–Mira</option>
+                    <option value="Tinkerbell">Tinkerbell</option>
+                    <option value="Trigonometric">Trigonometric</option>
+                    <option value="DoubleTrigonometric">Double Trigonometric</option>
+                    <option value="Quadratic">Quadratic</option>
+                </select>
+            </div>
+
+            <div class="controls offset">
+                <button id="Randomize">Randomize Parameters</button>
+            </div>
+
             <div class="controls">
                 Preset:
                 <select id="Preset">
                     <optgroup label="One Grid">
                         <option value="Binary">Binary</option>
-                        <option value="Monochrome">Black &amp; White</option>    
+                        <option value="Monochrome" selected>Black &amp; White</option>
                         <option value="Emerald">Emerald</option>
                         <option value="Cherry">Cherry</option>
                     </optgroup>
                     <optgroup label="RGB">
                         <option value="PVA">PVA</option>
                         <option value="APV">APV</option>
-                        <option value="VA0">VA0</option>
+                        <option value="VAP">VAP</option>
                     </optgroup>
                     <optgroup label="HSL">
-                        <option value="Classic" selected>Classic</option>
+                        <option value="Classic">Classic</option>
                         <option value="DeepRed">Deep Red</option>
                         <option value="IceBlue">Ice Blue</option>
+                        <option value="Testing">Testing</option>
                     </optgroup>
                 </select>
             </div>
@@ -72,6 +93,7 @@
             </div>
 
             <strong>View bounds</strong>
+            <a id="ResetBounds" href="#reset">Reset</a>
 
             <div class="controls">
                 Zoom level:
