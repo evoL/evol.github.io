@@ -31,13 +31,15 @@
                 <select id="Formula">
                     <option value="SimpleBlended">Simple Blended</option>
                     <option value="Blended">Blended</option>
-                    <option value="Branched" selected>Branched</option>
+                    <option value="SimpleBranched" selected>Simple Branched</option>
+                    <option value="Branched">Branched</option>
                     <option value="DeJong">DeJong</option>
                     <option value="GumowskiMira">Gumowski–Mira</option>
                     <option value="Tinkerbell">Tinkerbell</option>
                     <option value="Trigonometric">Trigonometric</option>
                     <option value="DoubleTrigonometric">Double Trigonometric</option>
                     <option value="Quadratic">Quadratic</option>
+                    <option value="Unnamed">Unnamed</option>
                 </select>
             </div>
 
@@ -54,6 +56,11 @@
                         <option value="Emerald">Emerald</option>
                         <option value="Cherry">Cherry</option>
                     </optgroup>
+                    <optgroup label="Debug">
+                        <option value="PositionLinear">Position (Linear)</option>
+                        <option value="Velocity">Velocity</option>
+                        <option value="Acceleration">Acceleration</option>
+                    </optgroup>
                     <optgroup label="RGB">
                         <option value="PVA">PVA</option>
                         <option value="APV">APV</option>
@@ -64,8 +71,20 @@
                         <option value="DeepRed">Deep Red</option>
                         <option value="IceBlue">Ice Blue</option>
                         <option value="Testing">Testing</option>
+                        <option value="Custom">Custom</option>
                     </optgroup>
                 </select>
+            </div>
+            <div id="CustomControls" class="controls hidden">
+                <label>
+                    Base color:
+                    <input type="color" id="Color" value="#ff0000" />
+                </label>
+                <label>
+                    Color shift:
+                    <input type="range" id="ColorShiftSlider" min="0" max="360" value="120" />
+                    <input type="number" id="ColorShift" min="0" max="360" value="120" />
+                </label>
             </div>
             <div class="controls offset">
                 <label>
@@ -83,7 +102,8 @@
             <div class="controls">
                 <label>
                     <input type="checkbox" id="Correction">
-                    Color correction
+                    <strong>Color correction</strong>
+                    <a id="ResetCorrection" href="#reset">Reset</a>
                 </label>
             </div>
             <div class="controls offset">

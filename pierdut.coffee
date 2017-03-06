@@ -8,6 +8,38 @@ hue2rgb = (p, q, t) ->
 
   return p
 
+rgb2hsl = (ri, gi, bi) ->
+  [r, g, b] = [ri / 255, gi / 255, bi / 255]
+  max = Math.max(r, g, b)
+  min = Math.min(r, g, b)
+
+  l = (max + min) / 2
+
+  if (max == min)
+    h = 0
+    s = 0
+  else
+    d = max - min
+    s = if l > 0.5 then d / (2 - max - min) else d / (max + min)
+
+    h = switch max
+      when r then (g - b) / d + (if g < b then 6 else 0)
+      when g then (b - r) / d + 2
+      when b then (r - g) / d + 4
+
+    h /= 6
+
+  h: h
+  s: s
+  l: l
+
+hex2rgb = (hex) ->
+  matches = /#?([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})/.exec(hex)
+
+  r: parseInt(matches[1], 16)
+  g: parseInt(matches[2], 16)
+  b: parseInt(matches[3], 16)
+
 class Size
   constructor: (@width, @height) ->
     @area = @width * @height
@@ -28,18 +60,16 @@ class Grid
     @view = new Float32Array(size.area)
 
     @max = 0
-    @logmax = 0
     @min = 0
-    @logmin = 0
+    @logDenominator = 0
 
   clear: ->
     for i in [0...@size.area]
       @view[i] = 0
 
     @max = 0
-    @logmax = 0
     @min = 0
-    @logmin = 0
+    @logDenominator = 0
 
     return @
 
@@ -56,10 +86,10 @@ class Grid
 
     if value > @max
       @max = value
-      @logmax = Math.log(value)
+      @logDenominator = Math.log(@max - @min + 1)
     if value < @min
       @min = value
-      @logmin = Math.log(value)
+      @logDenominator = Math.log(@max - @min + 1)
 
     return @
 
@@ -100,8 +130,8 @@ class Renderer
     return (index) -> (grid.view[index] - grid.min) / (grid.max - grid.min)
   Logarithmic: (grid) ->
     return (index) ->
-      return 0 if grid.view[index] == 0
-      (Math.log(grid.view[index]) - grid.logmin) / (grid.logmax - grid.logmin)
+      return 0 if grid.view[index] <= 0
+      Math.log(grid.view[index] - grid.min + 1) / grid.logDenominator
   Corrected: (gridMapper, curve) ->
     return (index) ->
       curve(gridMapper(index))
@@ -256,6 +286,19 @@ Formula =
 
     x: nx
     y: ny
+  SimpleBranched: (params, x, y) ->
+    if Math.random() < params[8]
+      nx = Math.sin(params[0] * y) + params[2] * Math.cos(params[0] * x)
+      ny = Math.sin(params[1] * x) + params[3] * Math.cos(params[1] * y)
+    else
+      nx = y + params[4] * (x >= 0 ? 1 : -1) * Math.sqrt(Math.abs(params[5] * x - params[6]))
+      ny = params[7] - x
+
+    x: nx
+    y: ny
+  Unnamed: (params, x, y) ->
+    x: y + params[0] * (x >= 0 ? 1 : -1) * Math.sqrt(Math.abs(params[1] * x - params[2]))
+    y: params[3] - x
   Tinkerbell: (params, x, y) ->
     x: x * x - y * y + params[0] * x + params[1] * y
     y: 2 * x * y + params[2] * x + params[3] * y
@@ -411,12 +454,33 @@ velocityGrid = new Grid(size)
 accelerationGrid = new Grid(size)
 renderer = new Renderer(size, ctx)
 
-# params = [0.07955073192715645, 1.9680727636441588, 0.11604494880884886, -0.26281140837818384, 0.7441467931494117, -0.49899573624134064, -1.586816594004631, -0.6013841619715095, 0.024278108729049563]
-# params = [-1.458986459299922,1.0505487695336342,1.0018926681950688,-0.7224727300927043,0.5442860405892134,1.3913868200033903,0.3794662533327937,1.5326597420498729,0.6884534107521176]
-# attractor = Attractor(Formula.Quadratic, params)
-# attractor = Attractor(Formula.Tinkerbell, [-0.6344889616593719, 1.248144844546914, 0.7854419508948922, -0.12596153747290373])
-# attractor = Attractor(Formula.DeJong, [-1.860391774909643026, 1.100373086160729041, -1.086431197851741803, -1.426991546514589704])
-attractor = randomizeAttractor(Formula.Branched, Params.Standard)
+# input = {"formula":"DeJong","params":[1.6623940085992217,-0.6880100890994072,1.4784153904765844,1.7967103328555822,1.3117856830358505,-1.7860524505376816,0.037012672051787376,0.9399532228708267,0.9259882022161037,0.6146395546384156],"ttl":20,"bounds":{"left":-2,"right":2,"top":-2,"bottom":2,"width":4,"height":4},"viewBounds":{"left":-2,"right":2,"top":-2,"bottom":2,"width":4,"height":4},"correction":{"enabled":false,"a":0.25,"b":0.5,"c":0.75}}
+# attractor = Attractor(Formula[input.formula], input.params)
+
+emulatedFormula = (_params, x, y) ->
+  # Formula.SimpleBlended([
+  #   -1.0642758188769221,
+  #   -1.3800999578088522,
+  #   -0.1564171528443694,
+  #   1.3192101996392012,
+  #   1.8829933917149901,
+  #   -0.13897148426622152,
+  #   -0.150858367793262,
+  #   1.5277614956721663,
+  #   ,
+  #   0.23145505599677563
+  # ], x, y)
+
+  weight = 0.13299989025108516
+  a = Formula.Trigonometric([1, -1.0642758188769219, -0.15641715284436941, -1.0642758188769219, 1, -1.3800999578088522, 1.3192101996392012, -1.3800999578088522], x, y)
+  b = Formula.Unnamed([1.88299339171499, -0.13897148426622152, -0.150858367793262, 1.5277614956721663], x, y)
+
+  x: a.x * weight + b.x * 0.86700010974891484
+  y: a.y * weight + b.y * 0.86700010974891484
+
+# attractor = Attractor(emulatedFormula)
+# attractor = Attractor(Formula.DeJong, [1.6623940085992217,-0.6880100890994072,1.4784153904765844,1.7967103328555822])
+attractor = randomizeAttractor(Formula.SimpleBranched, Params.Standard)
 
 zoomLevel = 2.0
 viewZoomLevel = 2.0
@@ -454,12 +518,20 @@ correctionCurve = StandardCurve(0.25, 0.5, 0.75)
     return (index) -> constant * gridMapper(index)
   Added: (constant, gridMapper) ->
     return (index) -> constant + gridMapper(index)
+  Merged: (gridMapperA, gridMapperB) ->
+    return (index) -> gridMapperA(index) + gridMapperB(index)
 
 @Presets =
   Binary: ->
     PixelMapper.Monochrome GridMapper.Binary positionGrid
   Monochrome: (gridModifier) ->
     PixelMapper.Monochrome gridModifier GridMapper.Logarithmic positionGrid
+  PositionLinear: (gridModifier) ->
+    PixelMapper.Monochrome gridModifier GridMapper.Linear velocityGrid
+  Velocity: (gridModifier) ->
+    PixelMapper.Monochrome gridModifier GridMapper.Logarithmic velocityGrid
+  Acceleration: (gridModifier) ->
+    PixelMapper.Monochrome gridModifier GridMapper.Logarithmic accelerationGrid
   PVA: (gridModifier) ->
     modLog = (grid) -> gridModifier GridMapper.Logarithmic grid
     PixelMapper.RGB modLog(positionGrid), modLog(velocityGrid), modLog(accelerationGrid)
@@ -511,7 +583,7 @@ correctionCurve = StandardCurve(0.25, 0.5, 0.75)
 
 pixelMapper = Presets.Monochrome GridModifier.None
 
-running = true
+running = false
 renderingEnabled = true
 
 run = ->
@@ -519,17 +591,18 @@ run = ->
   renderer.render(pixelMapper) if renderingEnabled
   requestAnimationFrame(run) if running
 
-requestAnimationFrame(run)
-
 toggle = $('Toggle')
+
+@setRunning = (r) ->
+  running = r
+  toggle.innerText = if running then 'Stop' else 'Start'
+  requestAnimationFrame(run) if running
+
 toggle.onclick = ->
-  if running
-    running = false
-    toggle.innerText = 'Start'
-  else
-    running = true
-    toggle.innerText = 'Stop'
-    requestAnimationFrame(run)
+  setRunning(!running)
+
+# Make sure we're running when not requested to stop
+setRunning(window.location.search != '?stop')
 
 $('Step').onclick = ->
   running = false
@@ -549,7 +622,10 @@ refreshingOperation = (fn) ->
 showState = ->
   $('State').innerText = JSON.stringify
     formula: $('Formula').value
-    params: attractor.params
+    params: reactor.attractor.params
+    ttl: $('TTL').valueAsNumber
+    bounds: reactor.bounds
+    viewBounds: viewBounds
     correction:
       enabled: $('Correction').checked
       a: $('CorrectionA').value * 0.01
@@ -570,7 +646,14 @@ updateFormula = ->
   showState()
 
 updateMapper = ->
-  preset = Presets[$('Preset').value]
+  presetValue = $('Preset').value
+
+  preset = if presetValue == 'Custom'
+    $('CustomControls').className = "controls"
+    createCustomMapper()
+  else
+    $('CustomControls').className = "controls hidden"
+    Presets[presetValue]
 
   if $('Correction').checked
     a = $('CorrectionA').value * 0.01
@@ -588,6 +671,18 @@ updateMapper = ->
   renderer.render(pixelMapper) if renderingEnabled && !running
 
   showState()
+
+createCustomMapper = ->
+  color = hex2rgb $('Color').value
+  hsl = rgb2hsl(color.r, color.g, color.b)
+  shift = $('ColorShift').valueAsNumber / 360
+
+  return (gridModifier) ->
+    h = GridModifier.Added(hsl.h, GridModifier.Multiplied(shift, GridMapper.Logarithmic velocityGrid))
+    s = GridMapper.Constant hsl.s
+    l = GridModifier.Multiplied(hsl.l, gridModifier GridMapper.Logarithmic(positionGrid))
+
+    PixelMapper.HSL h, s, l
 
 updateBounds = ->
   viewZoomLevel = Math.pow(2, 5 - $('ViewZoom').valueAsNumber * 0.5)
@@ -608,6 +703,8 @@ updateBounds = ->
     reactor.bounds = new Bounds(-zoomLevel + centerPoint.x, zoomLevel + centerPoint.x, -zoomLevel + centerPoint.y, zoomLevel + centerPoint.y)
     viewBounds = new Bounds(-viewZoomLevel + viewCenterPoint.x, viewZoomLevel + viewCenterPoint.x, -viewZoomLevel + viewCenterPoint.y, viewZoomLevel + viewCenterPoint.y)
 
+  showState()
+
 updateBoundsSync = ->
   sync = $('SyncBounds').checked
 
@@ -622,6 +719,8 @@ updateTTL = ->
 
   refreshingOperation ->
     reactor.ttl = ttl
+
+  showState()
 
 $('Rendering').onchange = ->
   renderingEnabled = $('Rendering').checked
@@ -644,6 +743,19 @@ $('ViewX').onchange = updateBounds
 $('ViewY').onchange = updateBounds
 $('SyncBounds').onchange = updateBoundsSync
 
+colorTimeout = null
+$('Color').onchange = ->
+  clearTimeout(colorTimeout)
+  colorTimeout = setTimeout(updateMapper, 150)
+
+$('ColorShiftSlider').onchange = ->
+  $('ColorShift').value = $('ColorShiftSlider').value
+  updateMapper()
+
+$('ColorShift').onchange = ->
+  $('ColorShiftSlider').value = $('ColorShift').value
+  updateMapper()
+
 $('TTLSlider').onchange = ->
   $('TTL').value = $('TTLSlider').value
   updateTTL()
@@ -660,5 +772,14 @@ $('ResetBounds').onclick = (e) ->
   $('ViewY').value = 0
 
   updateBounds()
+
+$('ResetCorrection').onclick = (e) ->
+  e.preventDefault()
+
+  $('CorrectionA').value = 25
+  $('CorrectionB').value = 50
+  $('CorrectionC').value = 75
+
+  updateMapper()
 
 showState()

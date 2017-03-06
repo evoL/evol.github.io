@@ -11,6 +11,10 @@ select {
     margin-right: 10px;
 }
 
+label {
+    display: block;
+}
+
 input.vertical {
     -webkit-appearance: slider-vertical;
     writing-mode: bt-lr;
@@ -25,6 +29,10 @@ input.vertical {
     font-family: monospace;
     margin-top: 10px;
     word-break: break-all;
+}
+
+.hidden {
+    display: none;
 }
 
 .row {
