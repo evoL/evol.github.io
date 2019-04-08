@@ -16,6 +16,11 @@
       align-items: center;
       justify-content: center;
     }
+    h3 {
+      margin: 1em 0 0;
+      padding: 0;
+      font-size: 1em;
+    }
     canvas {
       border: 1px solid #ccc;
       width: 512px;
@@ -34,10 +39,17 @@
       <select id="formulas"></select>
     </div>
     <div class="ui-row">
+      Steps:
+      <input id="steps" type="range" min="1" max="10" value="1" step="1">
+      <span id="stepsNum">1</span>
+    </div>
+    <div class="ui-row">
       Weight:
       <input id="weight" type="range" min="0" max="2" value="1" step="any">
       <span id="weightNum">1</span>
     </div>
+
+    <h3>Pre</h3>
     <div class="ui-row">
       Rotation:
       <input id="rotation" type="range" min="0" max="360" value="0" step="any">
@@ -55,6 +67,26 @@
       <input id="translationY" type="range" min="-2" max="2" value="0" step="any">
       <span id="translationYNum">0</span>
     </div>
+
+    <h3>Post</h3>
+    <div class="ui-row">
+      Rotation:
+      <input id="postRotation" type="range" min="0" max="360" value="0" step="any">
+      <span id="postRotationNum">0</span>
+    </div>
+    <div class="ui-row">
+      Scale:
+      <input id="postScale" type="range" min="-2" max="3" value="1" step="any">
+      <span id="postScaleNum">1</span>
+    </div>
+    <div class="ui-row">
+      Translation:
+      <input id="postTranslationX" type="range" min="-2" max="2" value="0" step="any">
+      <span id="postTranslationXNum">0</span>
+      <input id="postTranslationY" type="range" min="-2" max="2" value="0" step="any">
+      <span id="postTranslationYNum">0</span>
+    </div>
+
     <div class="ui-row" id="params">
     </div>
     <div class="ui-row">
@@ -620,6 +652,23 @@
       ctx.restore()
     }
 
+    function drawBox (transformPoint) {
+      const points = [
+        transformPoint({x: BOUNDS.x[0], y: BOUNDS.y[0]}),
+        transformPoint({x: BOUNDS.x[1], y: BOUNDS.y[0]}),
+        transformPoint({x: BOUNDS.x[1], y: BOUNDS.y[1]}),
+        transformPoint({x: BOUNDS.x[0], y: BOUNDS.y[1]})
+      ]
+
+      ctx.beginPath()
+      ctx.moveTo(points[0].x * GRID_UNIT_PX, points[0].y * GRID_UNIT_PX)
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x * GRID_UNIT_PX, points[i].y * GRID_UNIT_PX)
+      }
+      ctx.closePath()
+      ctx.stroke()
+    }
+
     function drawScatterplot (transformPoint) {
       for (let i = 0; i < SCATTERPLOT_POINTS; i++) {
         const point = {
@@ -636,8 +685,10 @@
 
     let currentFormula = FORMULAS.linear
     let currentWeight = 1.0
+    let currentSteps = 1
     let shouldDrawScatterplot = false
     let currentTransform = [1, 0, 0, 0, 1, 0]  // Identity matrix
+    let currentPostTransform = [1, 0, 0, 0, 1, 0]  // Identity matrix
     let currentParams = new Map()
 
     function render () {
@@ -645,16 +696,28 @@
       ctx.clearRect(0, 0, width, height)
       ctx.translate(width / 2, height / 2)
 
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)'
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'
-      drawGrid((point) => applyTransform(point, currentTransform))
+      ctx.strokeStyle = 'rgba(255, 0, 0, 0.3)'
+      ctx.lineWidth = 4
+      drawBox((point) => applyTransform(point, currentTransform))
+
+      ctx.strokeStyle = 'rgba(0, 0, 255, 0.3)'
+      drawBox((point) => applyTransform(applyTransform(point, currentTransform), currentPostTransform))
+
       ctx.strokeStyle = '#000'
       ctx.fillStyle = '#000'
+      ctx.lineWidth = 1
 
-      const transformPoint = (point) =>
-          applyFormula(
-              applyTransform(point, currentTransform),
-              currentFormula, currentWeight, currentTransform, currentParams)
+      const transformPoint = (point) => {
+        for (let i = 0; i < currentSteps; i++) {
+          point =
+            applyTransform(
+              applyFormula(
+                applyTransform(point, currentTransform),
+                currentFormula, currentWeight, currentTransform, currentParams),
+            currentPostTransform)
+        }
+        return point
+      }
 
       if (shouldDrawScatterplot) {
         drawScatterplot(transformPoint)
@@ -681,6 +744,31 @@
       const cos = Math.cos(angle)
 
       currentTransform = [
+        scale * cos,
+        scale * -sin,
+        scale * (translation.x * cos - translation.y * sin),
+        scale * sin,
+        scale * cos,
+        scale * (translation.x * sin + translation.y * cos)
+      ]
+    }
+
+    function calculatePostTransform () {
+      const rotationEl = document.getElementById('postRotation')
+      const scaleEl = document.getElementById('postScale')
+      const translationXEl = document.getElementById('postTranslationX')
+      const translationYEl = document.getElementById('postTranslationY')
+
+      const scale = scaleEl.valueAsNumber
+      const translation = {
+        x: translationXEl.valueAsNumber,
+        y: translationYEl.valueAsNumber
+      }
+      const angle = rotationEl.valueAsNumber / 180 * Math.PI
+      const sin = Math.sin(angle)
+      const cos = Math.cos(angle)
+
+      currentPostTransform = [
         scale * cos,
         scale * -sin,
         scale * (translation.x * cos - translation.y * sin),
@@ -748,6 +836,8 @@
 
     function setupUi () {
       const select = document.getElementById('formulas')
+      const steps = document.getElementById('steps')
+      const stepsNum = document.getElementById('stepsNum')
       const weight = document.getElementById('weight')
       const weightNum = document.getElementById('weightNum')
       const rotation = document.getElementById('rotation')
@@ -758,6 +848,14 @@
       const scaleNum = document.getElementById('scaleNum')
       const translationXNum = document.getElementById('translationXNum')
       const translationYNum = document.getElementById('translationYNum')
+      const postRotation = document.getElementById('postRotation')
+      const postScale = document.getElementById('postScale')
+      const postTranslationX = document.getElementById('postTranslationX')
+      const postTranslationY = document.getElementById('postTranslationY')
+      const postRotationNum = document.getElementById('postRotationNum')
+      const postScaleNum = document.getElementById('postScaleNum')
+      const postTranslationXNum = document.getElementById('postTranslationXNum')
+      const postTranslationYNum = document.getElementById('postTranslationYNum')
       const reset = document.getElementById('reset')
 
       for (const [name, formula] of Object.entries(FORMULAS)) {
@@ -775,6 +873,19 @@
 
         generateParamsUi()
         clearParams()
+        render()
+      })
+
+      steps.addEventListener('input', () => {
+        currentSteps = steps.valueAsNumber
+        stepsNum.textContent = currentSteps
+        render()
+      })
+
+      stepsNum.addEventListener('dblclick', () => {
+        currentSteps = 1
+        steps.value = 1
+        stepsNum.textContent = '1'
         render()
       })
 
@@ -843,6 +954,58 @@
         render()
       })
 
+      postRotation.addEventListener('input', () => {
+        postRotationNum.textContent = Math.round(postRotation.valueAsNumber)
+        calculatePostTransform()
+        render()
+      })
+
+      postRotationNum.addEventListener('dblclick', () => {
+        postRotation.value = 0
+        postRotationNum.textContent = '0'
+        calculatePostTransform()
+        render()
+      })
+
+      postScale.addEventListener('input', () => {
+        postScaleNum.textContent = Math.round(postScale.valueAsNumber * 100) / 100
+        calculatePostTransform()
+        render()
+      })
+
+      postScaleNum.addEventListener('dblclick', () => {
+        postScale.value = 1
+        postScaleNum.textContent = '1'
+        calculatePostTransform()
+        render()
+      })
+
+      postTranslationX.addEventListener('input', () => {
+        postTranslationXNum.textContent = Math.round(postTranslationX.valueAsNumber * 100) / 100
+        calculatePostTransform()
+        render()
+      })
+
+      postTranslationXNum.addEventListener('dblclick', () => {
+        postTranslationX.value = 0
+        postTranslationXNum.textContent = '0'
+        calculatePostTransform()
+        render()
+      })
+
+      postTranslationY.addEventListener('input', () => {
+        postTranslationYNum.textContent = Math.round(postTranslationY.valueAsNumber * 100) / 100
+        calculatePostTransform()
+        render()
+      })
+
+      postTranslationYNum.addEventListener('dblclick', () => {
+        postTranslationY.value = 0
+        postTranslationYNum.textContent = '0'
+        calculatePostTransform()
+        render()
+      })
+
       reset.addEventListener('click', () => {
         currentWeight = 1.0
         weight.value = 1
@@ -855,8 +1018,17 @@
         translationXNum.textContent = '0'
         translationY.value = 0
         translationYNum.textContent = '0'
+        postRotation.value = 0
+        postRotationNum.textContent = '0'
+        postScale.value = 1
+        postScaleNum.textContent = '1'
+        postTranslationX.value = 0
+        postTranslationXNum.textContent = '0'
+        postTranslationY.value = 0
+        postTranslationYNum.textContent = '0'
         clearParams()
         calculateTransform()
+        calculatePostTransform()
         render()
       })
     }
