@@ -37,6 +37,10 @@
   <div class="ui">
     <div class="ui-row">
       <select id="formulas"></select>
+      <label>
+        <input id="filled" type="checkbox">
+        Filled
+      </label>
     </div>
     <div class="ui-row">
       Steps:
@@ -634,8 +638,6 @@
     }
 
     function drawGrid (transformPoint) {
-      ctx.save()
-
       ctx.beginPath()
       for (let x = 0; x <= GRID_CELL_NUM; x++) {
         for (let y = 0; y <= GRID_CELL_NUM; y++) {
@@ -654,8 +656,27 @@
         }
       }
       ctx.stroke()
+    }
 
-      ctx.restore()
+    function drawFilledGrid (transformPoint) {
+      for (let x = 0; x < GRID_CELL_NUM; x++) {
+        for (let y = 0; y < GRID_CELL_NUM; y++) {
+          const points = [
+            transformPoint(transformIndex(x, y)),
+            transformPoint(transformIndex(x + 1, y)),
+            transformPoint(transformIndex(x + 1, y + 1)),
+            transformPoint(transformIndex(x, y + 1)),
+          ]
+
+          ctx.beginPath()
+          ctx.moveTo(points[0].x * GRID_UNIT_PX, points[0].y * GRID_UNIT_PX)
+          for (let i = 1; i < points.length; i++) {
+            ctx.lineTo(points[i].x * GRID_UNIT_PX, points[i].y * GRID_UNIT_PX)
+          }
+          ctx.closePath()
+          ctx.fill()
+        }
+      }
     }
 
     function drawBox (transformPoint) {
@@ -694,6 +715,7 @@
     let currentSteps = 1
     let shouldDrawScatterplot = false
     let shouldDrawTrail = false
+    let shouldDrawFilled = false
     let currentTransform = [1, 0, 0, 0, 1, 0]  // Identity matrix
     let currentPostTransform = [1, 0, 0, 0, 1, 0]  // Identity matrix
     let currentParams = new Map()
@@ -704,7 +726,7 @@
       ctx.translate(width / 2, height / 2)
 
       ctx.strokeStyle = '#000'
-      ctx.fillStyle = '#000'
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
       ctx.lineWidth = 1
 
       function makeTransformPoint(steps) {
@@ -724,6 +746,8 @@
       function draw(fn) {
         if (shouldDrawScatterplot) {
           drawScatterplot(fn)
+        } else if (shouldDrawFilled) {
+          drawFilledGrid(fn)
         } else {
           drawGrid(fn)
         }
@@ -879,6 +903,7 @@
       const postTranslationXNum = document.getElementById('postTranslationXNum')
       const postTranslationYNum = document.getElementById('postTranslationYNum')
       const showTrail = document.getElementById('showTrail')
+      const filled = document.getElementById('filled')
       const reset = document.getElementById('reset')
 
       for (const [name, formula] of Object.entries(FORMULAS)) {
@@ -1031,6 +1056,11 @@
 
       showTrail.addEventListener('change', () => {
         shouldDrawTrail = showTrail.checked
+        render()
+      });
+
+      filled.addEventListener('change', () => {
+        shouldDrawFilled = filled.checked
         render()
       });
 
