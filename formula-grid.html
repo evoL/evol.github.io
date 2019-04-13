@@ -44,6 +44,12 @@
       <span id="stepsNum">1</span>
     </div>
     <div class="ui-row">
+      <label>
+        <input id="showTrail" type="checkbox">
+        Show trail of steps
+      </label>
+    </div>
+    <div class="ui-row">
       Weight:
       <input id="weight" type="range" min="0" max="2" value="1" step="any">
       <span id="weightNum">1</span>
@@ -687,6 +693,7 @@
     let currentWeight = 1.0
     let currentSteps = 1
     let shouldDrawScatterplot = false
+    let shouldDrawTrail = false
     let currentTransform = [1, 0, 0, 0, 1, 0]  // Identity matrix
     let currentPostTransform = [1, 0, 0, 0, 1, 0]  // Identity matrix
     let currentParams = new Map()
@@ -700,24 +707,36 @@
       ctx.fillStyle = '#000'
       ctx.lineWidth = 1
 
-      const transformPoint = (point) => {
-        for (let i = 0; i < currentSteps; i++) {
-          point =
-            applyTransform(
-              applyFormula(
-                applyTransform(point, currentTransform),
-                currentFormula, currentWeight, currentTransform, currentParams),
-            currentPostTransform)
+      function makeTransformPoint(steps) {
+        return (point) => {
+          for (let i = 0; i < steps; i++) {
+            point =
+              applyTransform(
+                applyFormula(
+                  applyTransform(point, currentTransform),
+                  currentFormula, currentWeight, currentTransform, currentParams),
+              currentPostTransform)
+          }
+          return point
         }
-        return point
       }
 
-      if (shouldDrawScatterplot) {
-        drawScatterplot(transformPoint)
+      function draw(fn) {
+        if (shouldDrawScatterplot) {
+          drawScatterplot(fn)
+        } else {
+          drawGrid(fn)
+        }
+      }
+
+      if (shouldDrawTrail) {
+        for (let i = 1; i <= currentSteps; i++) {
+          ctx.globalAlpha = i / currentSteps
+          draw(makeTransformPoint(i))
+        }
       } else {
-        drawGrid(transformPoint)
+        draw(makeTransformPoint(currentSteps))
       }
-
 
       ctx.globalAlpha = 0.6
 
@@ -859,6 +878,7 @@
       const postScaleNum = document.getElementById('postScaleNum')
       const postTranslationXNum = document.getElementById('postTranslationXNum')
       const postTranslationYNum = document.getElementById('postTranslationYNum')
+      const showTrail = document.getElementById('showTrail')
       const reset = document.getElementById('reset')
 
       for (const [name, formula] of Object.entries(FORMULAS)) {
@@ -1008,6 +1028,11 @@
         calculatePostTransform()
         render()
       })
+
+      showTrail.addEventListener('change', () => {
+        shouldDrawTrail = showTrail.checked
+        render()
+      });
 
       reset.addEventListener('click', () => {
         currentWeight = 1.0
