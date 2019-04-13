@@ -697,10 +697,23 @@
     }
 
     function drawScatterplot (transformPoint) {
+      function randomPoint(i) {
+        // return {x: Math.random(), y: Math.random()}
+        const RATIO = 1.32471795724474602596
+        const A1 = 1 / RATIO
+        const A2 = 1 / (RATIO * RATIO)
+
+        return {
+          x: (0.5 + A1 * i) % 1,
+          y: (0.5 + A2 * i) % 1,
+        }
+      }
+
       for (let i = 0; i < SCATTERPLOT_POINTS; i++) {
+        const rnd = randomPoint(i)
         const point = {
-          x: Math.random() * (BOUNDS.x[1] - BOUNDS.x[0]) + BOUNDS.x[0],
-          y: Math.random() * (BOUNDS.y[1] - BOUNDS.y[0]) + BOUNDS.y[0]
+          x: rnd.x * (BOUNDS.x[1] - BOUNDS.x[0]) + BOUNDS.x[0],
+          y: rnd.y * (BOUNDS.y[1] - BOUNDS.y[0]) + BOUNDS.y[0]
         }
         const position = transformPoint(point)
 
