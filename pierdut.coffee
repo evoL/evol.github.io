@@ -384,6 +384,16 @@ randomizeAttractor = (formula, ranges) ->
     break unless formula.verify == true and not verifyAttractor(attractor)
   attractor
 
+# Experiment with quasirandom sequences
+RATIO = 1.32471795724474602596
+A1 = 1 / RATIO
+A2 = 1 / (RATIO * RATIO)
+randomPoint = (n) ->
+  x: Math.random()
+  y: Math.random()
+  # x: (0.5 + A1 * n) % 1
+  # y: (0.5 + A2 * n) % 1
+
 class Reactor
   constructor: (@attractor, options = {}) ->
     @bounds = options.bounds || new Bounds(-2, 2, -2, 2)
@@ -397,9 +407,11 @@ class Reactor
 
   reset: ->
     @system = for i in [0...@count]
+      point = randomPoint(i)
+
       position:
-        x: Math.random() * @bounds.width + @bounds.left
-        y: Math.random() * @bounds.height + @bounds.top
+        x: point.x * @bounds.width + @bounds.left
+        y: point.y * @bounds.height + @bounds.top
       velocity:
         x: 0
         y: 0
@@ -411,10 +423,11 @@ class Reactor
   step: ->
     for particle, i in @system
       if !@bounds.contain(particle.position.x, particle.position.y) || particle.ttl <= 0
+        point = randomPoint(i)
         particle = {
           position:
-            x: Math.random() * @bounds.width + @bounds.left
-            y: Math.random() * @bounds.height + @bounds.top
+            x: point.x * @bounds.width + @bounds.left
+            y: point.y * @bounds.height + @bounds.top
           velocity:
             x: 0
             y: 0
