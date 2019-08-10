@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<style type="text/css">
+  html {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 12px;
+  }
+  body {
+    color: #212121;
+    margin: 1rem;
+    padding: 0;
+  }
+  canvas {
+    box-shadow: 0 2px 24px rgba(0, 0, 0, 0.15);
+    display: block;
+    margin: auto;
+    max-width: 600px;
+    width: calc(100% - 2em);
+  }
+  code {
+    font-family: Roboto Mono, Menlo, Consolas, monospace;
+    font-size: 0.9em;
+    vertical-align: top;
+  }
+  .controls,
+  .info {
+    margin: 2rem auto 0;
+    max-width: 600px;
+  }
+  .type-control {
+    text-align: center;
+  }
+  .type-control__option {
+    border-radius: 2px;
+    display: inline-block;
+    padding: 0.5rem;
+    margin-right: 0.5rem;
+  }
+  .type-control__option:hover {
+    background-color: #f5f5f5;
+  }
+  .info {
+    color: #757575;
+    display: grid;
+    grid-template-columns: max-content 1fr;
+  }
+  .info__panel {
+    display: contents;
+    line-height: 1.6rem;
+  }
+  .info__label {
+    margin-right: 1em;
+  }
+  .info__value label {
+    vertical-align: top;
+  }
+  .hidden {
+    display: none;
+  }
+</style>
+<canvas width="600" height="600"></canvas>
+<div class="controls">
+  <div class="type-control">
+    <label class="type-control__option">
+      <input type="radio" name="type" value="dejong" checked />
+      DeJong
+    </label>
+    <label class="type-control__option">
+      <input type="radio" name="type" value="drain" />
+      Drain
+    </label>
+    <label class="type-control__option">
+      <input type="radio" name="type" value="weighted" />
+      Both (weighted)
+    </label>
+    <label class="type-control__option">
+      <input type="radio" name="type" value="voronoi" />
+      Both (Voronoi)
+    </label>
+  </div>
+</div>
+<div class="info">
+  <div class="info__panel info__panel-dejong">
+    <span class="info__label">DeJong: </span>
+    <code class="info__value" id="params-dejong">[placeholder]</code>
+  </div>
+  <div class="info__panel info__panel-drain hidden">
+    <span class="info__label">Drain: </span>
+    <code class="info__value" id="params-drain">[placeholder]</code>
+  </div>
+  <div class="info__panel info__panel-weighted hidden">
+    <span class="info__label">Weight: </span>
+    <div class="info_value">
+      <input type="range" id="weight-input" min="0" max="1" step="any" />
+      <code id="weight">placeholder</code>
+    </div>
+  </div>
+  <div class="info__panel info__panel-voronoi hidden">
+    <span class="info__label">DeJong Position: </span>
+    <div class="info__value">
+      <label>x: </label
+      ><input type="range" id="dejong-x" min="-3" max="3" step="any" />
+      <label>y: </label
+      ><input type="range" id="dejong-y" min="-3" max="3" step="any" /><br />
+      <code id="position-dejong">placeholder</code>
+    </div>
+
+    <span class="info__label">Drain Position: </span>
+    <div class="info__value">
+      <label>x: </label
+      ><input type="range" id="drain-x" min="-3" max="3" step="any" />
+      <label>y: </label
+      ><input type="range" id="drain-y" min="-3" max="3" step="any" /><br />
+      <code id="position-drain">placeholder</code>
+    </div>
+
+    <span class="info__label">Debug overlay</span>
+    <div class="info__value">
+      <input type="checkbox" id="overlay" />
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript" src="hmm.js"></script>
