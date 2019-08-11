@@ -91,7 +91,7 @@ const PROCESSORS = {
   }
 };
 
-let process = PROCESSORS.dejong;
+let process = PROCESSORS.voronoi;
 
 function randomPoint() {
   return {
@@ -192,7 +192,7 @@ function render(grid) {
 }
 
 let overlayEnabled = false;
-let overlayCanBeEnabled = false;
+let overlayCanBeEnabled = true;
 function drawOverlay() {
   const scaledPoints = {
     dejong: scalePoint(PARAMS.points.dejong),
